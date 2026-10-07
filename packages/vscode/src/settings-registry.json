@@ -737,6 +737,18 @@
       "scope": "device",
       "local": true
     },
+    "workStatusFloating": {
+      "scope": "device",
+      "local": true
+    },
+    "workStatusFloatPosition": {
+      "scope": "device",
+      "local": true
+    },
+    "workStatusFloatIdleOpacity": {
+      "scope": "device",
+      "local": true
+    },
     "isSessionSwitcherOpen": {
       "scope": "device",
       "local": true

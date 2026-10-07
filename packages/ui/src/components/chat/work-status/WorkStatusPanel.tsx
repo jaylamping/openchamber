@@ -25,6 +25,8 @@ import {
 } from './sections';
 import { useWorkStatusExtensionSections } from './useWorkStatusExtensionSections';
 import { WorkStatusPresenceProvider } from './presence';
+import { useWorkStatusFloat } from './useWorkStatusFloat';
+import { normalizeFloatIdleOpacity } from './floating';
 import { Icon } from '@/components/icon/Icon';
 
 type Props = {
@@ -40,6 +42,11 @@ type Props = {
    * is too narrow to give it a column of its own.
    */
   overlay?: boolean;
+  /**
+   * Floats over the chat wherever the user dragged it, dimmed while not in
+   * use. Unlike the overlay it stays up until switched off.
+   */
+  floating?: boolean;
 };
 
 /**
@@ -68,10 +75,18 @@ const PANEL_TRANSITION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
  * eat a visible slice of every row's trailing value, and the shadows already
  * say there is more to see.
  */
-export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible, repositoryEnabled = true, overlay = false }) => {
+export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible, repositoryEnabled = true, overlay = false, floating = false }) => {
   const { t } = useI18n();
   const setScrollTop = useUIStore((state) => state.setWorkStatusScrollTop);
   const setOverlayOpen = useUIStore((state) => state.setWorkStatusOverlayOpen);
+  const setFloating = useUIStore((state) => state.setWorkStatusFloating);
+  const idleOpacity = normalizeFloatIdleOpacity(useUIStore((state) => state.workStatusFloatIdleOpacity));
+  const float = useWorkStatusFloat(floating);
+  // Hover and focus each lift the dimming on their own: a keyboard user
+  // tabbing through rows has no pointer over the card.
+  const [pointerInside, setPointerInside] = React.useState(false);
+  const [focusInside, setFocusInside] = React.useState(false);
+  const engaged = pointerInside || focusInside || float.dragging;
   const hiddenSections = useUIStore((state) => state.workStatusHiddenSections);
   const storedOrder = useUIStore((state) => state.workStatusSectionOrder);
   const extensionSections = useWorkStatusExtensionSections();
@@ -188,9 +203,26 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
     contextSources: <WorkStatusContextSection sessionId={sessionId} directory={directory} />,
   } satisfies Record<Exclude<WorkStatusSectionId, 'session' | 'repository'>, React.ReactNode>;
 
-  return (
+  const dimmed = floating && !engaged;
+  const hiddenTransform = overlay
+    ? 'translateY(-6px) scale(0.98)'
+    // Floating: nothing to slide toward, so it settles in place.
+    : floating
+      ? 'scale(0.98)'
+      // Inline: leaves to the right and arrives from it, so the card
+      // reads as sliding out past the window edge.
+      : `translateX(${WORK_STATUS_PANEL_WIDTH / 4}px)`;
+
+  const card = (
     <aside
       ref={overlayRef}
+      onPointerEnter={floating ? () => setPointerInside(true) : undefined}
+      onPointerLeave={floating ? () => setPointerInside(false) : undefined}
+      onFocus={floating ? () => setFocusInside(true) : undefined}
+      onBlur={floating ? (event) => {
+        const next = event.relatedTarget;
+        if (!(next instanceof Node && event.currentTarget.contains(next))) setFocusInside(false);
+      } : undefined}
       aria-label={t('chat.workStatus.ariaLabel')}
       aria-hidden={!interactive}
       // The card stays mounted while hidden so it can animate its own collapse,
@@ -204,9 +236,11 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
         // overflowing the chat.
         // A left margin as well as a right one: flush against the transcript
         // the card's own shadow had no room and was clipped down that edge.
-        'relative my-4 flex shrink-0 flex-col self-start overflow-hidden',
-        'max-h-[calc(100%-2rem)]',
-        interactive ? 'ml-2 mr-4' : 'ml-0 mr-0',
+        'relative flex shrink-0 flex-col self-start overflow-hidden',
+        floating
+          // The frame around it owns position and height.
+          ? 'm-0 max-h-full min-h-0'
+          : ['my-4 max-h-[calc(100%-2rem)]', interactive ? 'ml-2 mr-4' : 'ml-0 mr-0'],
         // Out of the flow entirely, anchored to the chat column's top-right so
         // it reads as a dropdown from the header button. As a flex child it
         // took part in the layout and pushed the transcript, which is the one
@@ -221,29 +255,30 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
         // only recovery path unreachable.
         'motion-reduce:transition-none',
         'rounded-xl border border-[var(--interactive-border)]',
-        !overlay && 'bg-[var(--surface-muted)]/40',
+        !overlay && !floating && 'bg-[var(--surface-muted)]/40',
         // A lighter version of the composer's lift: the same shape, but this
         // card is taller, so the composer's spread reads as heavy here.
-        'shadow-[0_2px_8px_-3px_rgb(0_0_0_/_0.08)]',
+        // Floating, it sits on the transcript wherever it was dropped and
+        // needs the stronger lift to read as above it — except while dimmed,
+        // when a full shadow under a faint card reads as a smudge.
+        floating && !dimmed
+          ? 'shadow-[0_8px_28px_-8px_rgb(0_0_0_/_0.28)]'
+          : 'shadow-[0_2px_8px_-3px_rgb(0_0_0_/_0.08)]',
       )}
       style={{
         // The overlay keeps its width: it takes no space from the chat, so
         // collapsing it would animate a dimension nothing depends on. It fades
         // and lifts instead, like the dropdown it reads as.
-        width: overlay || interactive ? WORK_STATUS_PANEL_WIDTH : 0,
+        width: overlay || floating || interactive ? WORK_STATUS_PANEL_WIDTH : 0,
         opacity: interactive ? 1 : 0,
-        transform: visible
-          ? 'translateY(0) scale(1)'
-          : overlay
-            ? 'translateY(-6px) scale(0.98)'
-            // Inline: leaves to the right and arrives from it, so the card
-            // reads as sliding out past the window edge.
-            : `translateX(${WORK_STATUS_PANEL_WIDTH / 4}px)`,
-        transformOrigin: 'top right',
-        transitionProperty: 'width, opacity, transform, margin',
+        transform: visible ? 'translateY(0) scale(1)' : hiddenTransform,
+        transformOrigin: floating ? 'center' : 'top right',
+        transitionProperty: 'width, opacity, transform, margin, box-shadow',
         transitionDuration: `${PANEL_TRANSITION_MS}ms`,
         transitionTimingFunction: PANEL_TRANSITION_EASING,
-        pointerEvents: interactive ? undefined : 'none',
+        // The floating frame passes clicks through to the transcript, and
+        // pointer-events inherit, so the card has to claim them back.
+        pointerEvents: interactive ? (floating ? 'auto' : undefined) : 'none',
       }}
     >
       {/* Beside the transcript the translucent fill reads as depth; on top of
@@ -251,17 +286,74 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
           is frosted. The glass sits on this inner layer, away from the card's
           shadow: on one element Chromium grows the backdrop-filter layer by
           the shadow's blur and paints a grey band past the card's edge. */}
-      <div className={cn('flex min-h-0 flex-1 flex-col', overlay && 'oc-glass-panel')}>
-      {/* Overlaid rather than placed in flow: the panel has no header of its
-          own, and giving it one would cost a row of height on every session. */}
-      <button
-        type="button"
-        aria-label={t('chat.workStatus.sections.open')}
-        onClick={() => setSectionsDialogOpen(true)}
-        className="absolute right-2 top-1.5 z-10 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+      {/* Floating and idle, this layer dims so the transcript reads through;
+          the same curve brings it back the moment the pointer arrives. The
+          dimming lives here, not on the card: opacity on an ancestor of a
+          backdrop-filter cuts it off from the page, so the frost would drop
+          out while dimmed and pop back in at the end of every fade. */}
+      <div
+        className={cn('flex min-h-0 flex-1 flex-col motion-reduce:transition-none', (overlay || floating) && 'oc-glass-panel')}
+        style={floating ? {
+          opacity: dimmed ? idleOpacity : 1,
+          transition: `opacity ${PANEL_TRANSITION_MS}ms ${PANEL_TRANSITION_EASING}`,
+        } : undefined}
       >
-        <Icon name="equalizer-2" className="size-4" />
-      </button>
+      {floating ? (
+        // Floating, the card needs something to hold, so it gets the header
+        // row the docked panel goes without.
+        <div className="flex shrink-0 items-center gap-0.5 pl-1 pr-2 pt-1.5">
+          <button
+            type="button"
+            {...float.handleProps}
+            aria-label={t('chat.workStatus.float.move')}
+            aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+            className={cn(
+              'flex h-6 min-w-0 flex-1 touch-none select-none items-center rounded px-1 text-muted-foreground transition-colors hover:text-foreground',
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--interactive-focus-ring)]',
+              float.dragging ? 'cursor-grabbing' : 'cursor-grab',
+            )}
+          >
+            <Icon name="draggable" className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={t('chat.workStatus.float.dock')}
+            onClick={() => setFloating(false)}
+            className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Icon name="layout-right" className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={t('chat.workStatus.sections.open')}
+            onClick={() => setSectionsDialogOpen(true)}
+            className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Icon name="equalizer-2" className="size-4" />
+          </button>
+        </div>
+      ) : (
+        // Overlaid rather than placed in flow: the panel has no header of its
+        // own, and giving it one would cost a row of height on every session.
+        <div className="absolute right-2 top-1.5 z-10 flex items-center gap-1">
+          <button
+            type="button"
+            aria-label={t('chat.workStatus.float.float')}
+            onClick={() => setFloating(true)}
+            className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Icon name="picture-in-picture-2" className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={t('chat.workStatus.sections.open')}
+            onClick={() => setSectionsDialogOpen(true)}
+            className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Icon name="equalizer-2" className="size-4" />
+          </button>
+        </div>
+      )}
 
       {contentMounted ? (
       <WorkStatusPresenceProvider onChange={setRenderedSections}>
@@ -270,8 +362,12 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
         onScroll={handleScroll}
         size={24}
         // Sections returning null leave no DOM node, so this reserves room for
-        // settings in the first rendered heading, regardless of saved order.
-        className="oc-hide-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2 [&>section:first-child>[data-work-status-heading]]:pr-7"
+        // the corner buttons in the first rendered heading, regardless of
+        // saved order. Floating, they sit in a header row of their own.
+        className={cn(
+          'oc-hide-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2',
+          !floating && '[&>section:first-child>[data-work-status-heading]]:pr-12',
+        )}
       >
         <WorkStatusPrimaryGroup
           sessionId={sessionId}
@@ -310,5 +406,27 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
 
       <WorkStatusSectionsDialog open={sectionsDialogOpen} onOpenChange={setSectionsDialogOpen} />
     </aside>
+  );
+
+  if (!floating) return card;
+
+  // The frame carries the drag position as a transform written by
+  // `useWorkStatusFloat`, so the card's own transform stays free for its
+  // enter and exit. Neither layer takes pointer events itself: they would
+  // otherwise block the transcript under a card that is fading out.
+  //
+  // The outer layer clips rather than hides. A card left under an open side
+  // panel reaches past the chat's edge, and inside an `overflow-hidden` box
+  // that overhang is scroll room: focusing a control in the card scrolled the
+  // whole chat sideways. `overflow: clip` is not a scroll container at all.
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-clip">
+      <div
+        ref={float.frameRef}
+        className="absolute left-0 top-0 flex max-h-[calc(100%-1.5rem)] flex-col"
+      >
+        {card}
+      </div>
+    </div>
   );
 };

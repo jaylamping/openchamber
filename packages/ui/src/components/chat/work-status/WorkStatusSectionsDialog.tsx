@@ -6,7 +6,13 @@ import { Icon } from '@/components/icon/Icon';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { useUIStore } from '@/stores/useUIStore';
-import { SettingsCheckboxRow } from '@/components/sections/shared/SettingsSection';
+import {
+  SETTINGS_NUMBER_UNIT_CLASS,
+  SETTINGS_RANGE_INPUT_CLASS,
+  SettingsCheckboxRow,
+  SettingsStackedField,
+} from '@/components/sections/shared/SettingsSection';
+import { WORK_STATUS_FLOAT_OPACITY_MIN, normalizeFloatIdleOpacity } from './floating';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -141,6 +147,11 @@ export const WorkStatusSectionsDialog: React.FC<{
 
   const handleShowAll = () => setHiddenSections([]);
 
+  const floating = useUIStore((state) => state.workStatusFloating);
+  const setFloating = useUIStore((state) => state.setWorkStatusFloating);
+  const idleOpacityPercent = Math.round(normalizeFloatIdleOpacity(useUIStore((state) => state.workStatusFloatIdleOpacity)) * 100);
+  const setIdleOpacity = useUIStore((state) => state.setWorkStatusFloatIdleOpacity);
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen, details) => {
       if (!nextOpen && details.reason === 'escape-key' && dragging.current) {
@@ -194,6 +205,36 @@ export const WorkStatusSectionsDialog: React.FC<{
             </Button>
           </div>
         ) : null}
+
+        <div className="flex flex-col gap-3 border-t pt-3">
+          <SettingsCheckboxRow
+            settingsItem="chat.work-status.floating"
+            checked={floating}
+            onChange={setFloating}
+            label={t('chat.workStatus.float.toggleLabel')}
+            ariaLabel={t('chat.workStatus.float.toggleLabel')}
+            info={t('chat.workStatus.float.toggleInfo')}
+          />
+          {floating ? (
+            <SettingsStackedField
+              settingsItem="chat.work-status.floating-opacity"
+              label={t('chat.workStatus.float.idleOpacity')}
+              info={t('chat.workStatus.float.idleOpacityInfo')}
+            >
+              <input
+                type="range"
+                min={WORK_STATUS_FLOAT_OPACITY_MIN * 100}
+                max={100}
+                step={5}
+                value={idleOpacityPercent}
+                onChange={(event) => setIdleOpacity(Number(event.target.value) / 100)}
+                aria-label={t('chat.workStatus.float.idleOpacity')}
+                className={SETTINGS_RANGE_INPUT_CLASS}
+              />
+              <span className={cn(SETTINGS_NUMBER_UNIT_CLASS, 'min-w-[3ch] text-right')}>{idleOpacityPercent}%</span>
+            </SettingsStackedField>
+          ) : null}
+        </div>
       </DialogContent>
     </Dialog>
   );

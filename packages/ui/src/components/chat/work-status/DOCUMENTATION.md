@@ -26,7 +26,8 @@ It is **not** a context-panel surface. It is not registered in
 `lib/surfaces/registry.ts`, has no rail icon, no tab, no persisted width and no
 resizer. It is a card floating inside the chat column — rounded border, faint
 fill, its own margin — rather than a docked pane flush against the window edge.
-When it overlays the transcript, it uses the shared `oc-glass-panel` surface;
+When it overlays the transcript (the narrow-window overlay, or floating — see
+[Floating](#floating)), it uses the shared `oc-glass-panel` surface;
 the inline card keeps its lighter, non-blurred fill instead.
 
 ## Placement
@@ -400,6 +401,46 @@ just collapsed it.
 Its expanded list is capped at eight rows and scrolls independently, so a
 session with many subagents does not crowd every section below it out of the
 panel.
+
+## Floating
+
+The panel can leave the row and float over the chat (`workStatusFloating`),
+switched from the corner button or the sections dialog. It is the same
+`WorkStatusPanel` with `floating`, mounted as a second instance after the row
+in `ChatContainer`; the inline instance stays mounted, collapsed, so switching
+back animates. Floating replaces the narrow-window overlay: switching it on
+closes the overlay, and the header button becomes a plain on/off switch at any
+width.
+
+Its visibility ignores `useWorkStatusVisibility`. It needs no room beside the
+transcript, and an open context panel covers it rather than hiding it: the
+card is positioned against the chat's own box, which `main` clips, and the
+chat wrapper in `MainLayout` is `isolate` so the card's `z-30` stays beneath
+the expanded context panel. It is still suppressed in expanded-input mode,
+where it would sit on the text being written.
+
+**Position** is stored as `{ side, inset, top }` (`floating.ts`), measured from
+the nearer side of the chat area, so a card parked on the right follows the
+right edge as the window widens. It is clamped into the area on every layout
+change. A card never moved, or with a corrupt stored value, sits in the
+top-right corner of the visible transcript instead, so floating it while a side
+panel is open does not put it under that panel.
+A drag clamps to the visible transcript, not the whole area, so a card cannot
+be dropped under an open side panel.
+
+**Dragging** goes through the header bar's handle (`useWorkStatusFloat`) with
+pointer capture. Each move writes the frame's `transform` directly; routing
+moves through React would re-render every section per frame. The store hears
+only the drop. The frame carries the position, so the card's own transform
+stays free for its enter and exit. The handle also moves the card with the
+arrow keys (Shift for larger steps).
+
+**Dimming:** while neither the pointer nor keyboard focus is inside, the card
+sits at `workStatusFloatIdleOpacity` (20–100%, default 60%, set in the sections
+dialog) and returns to full opacity on the existing panel transition.
+
+Position, floating and opacity are device-local (`LOCAL_DEVICE_KEYS` in the
+settings registry): a spot chosen on one screen means nothing on another.
 
 ## Collapsed Usage headline
 

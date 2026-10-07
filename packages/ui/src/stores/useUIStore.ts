@@ -20,6 +20,11 @@ import { noteBrowserTabOpenedWithAddress, requestBrowserTabLoad } from '@/lib/br
 import { isContextPanelMode, type ContextPanelMode } from '@/lib/surfaces/modes';
 import { getRuntimeKey, isTransientRuntimeKey } from '@/lib/runtime-switch';
 import { sanitizeWorkStatusSectionOrder, type WorkStatusPanelSectionId } from '@/components/chat/work-status/sections';
+import {
+  DEFAULT_WORK_STATUS_FLOAT_IDLE_OPACITY,
+  normalizeFloatIdleOpacity,
+  type WorkStatusFloatPosition,
+} from '@/components/chat/work-status/floating';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
 export type { ContextPanelMode };
@@ -869,6 +874,16 @@ interface UIStore {
    */
   workStatusOverlayOpen: boolean;
   /**
+   * The panel floats over the chat wherever the user dragged it, instead of
+   * sitting beside the transcript. Device-local, like the position below: a
+   * spot picked on one screen means nothing on another.
+   */
+  workStatusFloating: boolean;
+  /** Where the floating card was dropped; null until it is first moved. */
+  workStatusFloatPosition: WorkStatusFloatPosition | null;
+  /** Opacity of the floating card while the pointer and focus are elsewhere. */
+  workStatusFloatIdleOpacity: number;
+  /**
    * Sections the user switched off. Hidden rather than visible ones are
    * stored, so a section added later appears without touching saved settings.
    * Persisted to server settings, not just this browser.
@@ -1152,6 +1167,9 @@ interface UIStore {
   setWorkStatusPanelVisible: (visible: boolean) => void;
   setWorkStatusPanelFits: (fits: boolean) => void;
   setWorkStatusOverlayOpen: (open: boolean) => void;
+  setWorkStatusFloating: (floating: boolean) => void;
+  setWorkStatusFloatPosition: (position: WorkStatusFloatPosition | null) => void;
+  setWorkStatusFloatIdleOpacity: (opacity: number) => void;
   setWorkStatusSectionVisible: (sectionId: string, visible: boolean) => void;
   setWorkStatusHiddenSections: (sectionIds: string[]) => void;
   setWorkStatusSectionOrder: (sectionIds: readonly string[]) => void;
@@ -1373,6 +1391,9 @@ export const useUIStore = create<UIStore>()(
         workStatusPanelVisible: false,
         workStatusPanelFits: false,
         workStatusOverlayOpen: false,
+        workStatusFloating: false,
+        workStatusFloatPosition: null,
+        workStatusFloatIdleOpacity: DEFAULT_WORK_STATUS_FLOAT_IDLE_OPACITY,
         workStatusHiddenSections: [],
         workStatusSectionOrder: sanitizeWorkStatusSectionOrder([]),
         workStatusHiddenSectionsExplicit: false,
@@ -2086,6 +2107,20 @@ export const useUIStore = create<UIStore>()(
 
         setWorkStatusOverlayOpen: (open) => {
           set((state) => (state.workStatusOverlayOpen === open ? state : { workStatusOverlayOpen: open }));
+        },
+
+        setWorkStatusFloating: (floating) => {
+          // Floating replaces the narrow-window dropdown; leaving it open would
+          // show the panel twice the moment floating is switched off again.
+          set({ workStatusFloating: floating, workStatusOverlayOpen: false });
+        },
+
+        setWorkStatusFloatPosition: (position) => {
+          set({ workStatusFloatPosition: position });
+        },
+
+        setWorkStatusFloatIdleOpacity: (opacity) => {
+          set({ workStatusFloatIdleOpacity: normalizeFloatIdleOpacity(opacity) });
         },
 
         setWorkStatusSectionVisible: (sectionId, visible) => {
@@ -3378,6 +3413,9 @@ export const useUIStore = create<UIStore>()(
           messageQueueExpanded: state.messageQueueExpanded,
           workStatusScrollTop: state.workStatusScrollTop,
           workStatusPanelEnabled: state.workStatusPanelEnabled,
+          workStatusFloating: state.workStatusFloating,
+          workStatusFloatPosition: state.workStatusFloatPosition,
+          workStatusFloatIdleOpacity: state.workStatusFloatIdleOpacity,
           workStatusHiddenSections: state.workStatusHiddenSections,
           workStatusSectionOrder: state.workStatusSectionOrder,
           workStatusHiddenSectionsExplicit: state.workStatusHiddenSectionsExplicit,

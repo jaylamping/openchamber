@@ -425,21 +425,24 @@ export const Header: React.FC = () => {
   const workStatusPanelFits = useUIStore((state) => state.workStatusPanelFits);
   const workStatusOverlayOpen = useUIStore((state) => state.workStatusOverlayOpen);
   const setWorkStatusOverlayOpen = useUIStore((state) => state.setWorkStatusOverlayOpen);
+  const workStatusFloating = useUIStore((state) => state.workStatusFloating);
 
   // Two meanings for one button. With room beside the chat it switches the
   // panel on and off. Without room it cannot be shown inline at all, so it
   // reads as off and opens the panel over the chat instead — the stored
   // preference is left alone, so the panel comes back on its own once the
-  // window is wide enough again.
-  const workStatusPanelShownInline = workStatusPanelEnabled && workStatusPanelFits;
-  const workStatusToggleActive = workStatusPanelShownInline || workStatusOverlayOpen;
+  // window is wide enough again. A floating panel needs no room, so for it
+  // the button is a plain switch whatever the width.
+  const workStatusOverlayMode = workStatusPanelEnabled && !workStatusPanelFits && !workStatusFloating;
+  const workStatusPanelShown = workStatusPanelEnabled && (workStatusPanelFits || workStatusFloating);
+  const workStatusToggleActive = workStatusPanelShown || workStatusOverlayOpen;
   const handleWorkStatusToggle = React.useCallback(() => {
-    if (workStatusPanelEnabled && !workStatusPanelFits) {
+    if (workStatusOverlayMode) {
       setWorkStatusOverlayOpen(!workStatusOverlayOpen);
       return;
     }
     setWorkStatusPanelEnabled(!workStatusPanelEnabled);
-  }, [setWorkStatusOverlayOpen, setWorkStatusPanelEnabled, workStatusOverlayOpen, workStatusPanelEnabled, workStatusPanelFits]);
+  }, [setWorkStatusOverlayOpen, setWorkStatusPanelEnabled, workStatusOverlayMode, workStatusOverlayOpen, workStatusPanelEnabled]);
   const showDesktopHeaderContextUsage = !isVSCode
     && !workStatusPanelVisible
     && !!stableDesktopContextUsage;
@@ -1693,7 +1696,7 @@ export const Header: React.FC = () => {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {workStatusPanelEnabled && !workStatusPanelFits
+                {workStatusOverlayMode
                   ? (workStatusOverlayOpen
                     ? t('header.workStatusPanel.hide')
                     : t('header.workStatusPanel.showOverlay'))

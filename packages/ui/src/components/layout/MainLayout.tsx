@@ -142,7 +142,10 @@ export const MainLayout: React.FC = () => {
                                         which the context panel animates. */}
                                     <div className="relative flex flex-1 min-h-0 min-w-0 overflow-hidden" data-page-scroll-lock="true" data-chat-area="true">
                                         <main className="flex-1 overflow-hidden bg-background relative" data-page-scroll-lock="true">
-                                            <div className={cn('absolute inset-0', isSurfacePageOpen && 'invisible')}>
+                                            {/* `isolate` keeps the chat's raised layers, such as the
+                                                floating work-status card, beneath the expanded context
+                                                panel, which overlays this area from outside it. */}
+                                            <div className={cn('absolute inset-0 isolate', isSurfacePageOpen && 'invisible')}>
                                                 <ErrorBoundary><ChatView active={!isSettingsDialogOpen && !isSurfacePageOpen} /></ErrorBoundary>
                                             </div>
                                             <ErrorBoundary><RunOverview /></ErrorBoundary>

@@ -22,6 +22,7 @@ import {
     SettingsChipGroup,
     SETTINGS_SELECT_SIZE,
     SETTINGS_NUMBER_INPUT_CLASS,
+    SETTINGS_RANGE_INPUT_CLASS,
     SETTINGS_SELECT_ROW_TRIGGER_CLASS,
     SETTINGS_CONTROL_CLUSTER_CLASS,
     SETTINGS_FIELD_LABEL_CLASS,
@@ -993,7 +994,7 @@ export const VoiceSettings: React.FC = () => {
         };
     }, [compatiblePreviewAudio]);
 
-    const sliderClass = "flex-1 min-w-0 h-1.5 bg-[var(--interactive-border)] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--primary-base)] [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[var(--primary-base)] [&::-moz-range-thumb]:border-0 disabled:opacity-50";
+    const sliderClass = SETTINGS_RANGE_INPUT_CLASS;
 
     return (
         <>

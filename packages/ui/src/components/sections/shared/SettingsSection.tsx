@@ -63,6 +63,10 @@ export const SETTINGS_CLUSTER_CONTROL_CLASS = 'min-w-0 flex-1';
  */
 export const SETTINGS_NUMBER_STEPPER_ROW_CLASS = 'flex w-full min-w-0 items-center gap-2';
 
+/** Native range input styled as a thin track with a primary thumb. */
+export const SETTINGS_RANGE_INPUT_CLASS =
+  'flex-1 min-w-0 h-1.5 bg-[var(--interactive-border)] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--primary-base)] [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[var(--primary-base)] [&::-moz-range-thumb]:border-0 disabled:opacity-50';
+
 /** Unit suffix next to a settings number stepper (%, px, …). */
 export const SETTINGS_NUMBER_UNIT_CLASS =
   'typography-meta shrink-0 text-muted-foreground tabular-nums';

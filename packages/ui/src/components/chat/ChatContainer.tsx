@@ -1035,7 +1035,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         && !isVSCode
         && !pinned
         && chatSurfaceMode !== 'mini-chat';
-    const showWorkStatusPanel = workStatusPanelMountable && workStatusVisible;
+    // Floating takes the panel out of the row entirely: it needs no room beside
+    // the transcript, and the context panel opening covers it rather than
+    // pushing it out.
+    const workStatusFloating = useUIStore((state) => state.workStatusFloating);
+    const showWorkStatusPanel = workStatusPanelMountable && !workStatusFloating && workStatusVisible;
 
     // Offered over the chat when there is no room beside it. The panel is still
     // switched on; only the layout refuses it.
@@ -1046,8 +1050,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     // that appears and disappears with the condition has nothing to animate.
     const workStatusOverlayMountable = workStatusPanelMountable
         && workStatusPanelEnabled
+        && !workStatusFloating
         && !workStatusFits;
     const showWorkStatusOverlay = workStatusOverlayMountable && workStatusOverlayOpen;
+    // The expanded composer takes over the whole column; a card floating over
+    // it would sit on the text being written.
+    const workStatusFloatMountable = workStatusPanelMountable && workStatusFloating;
+    const showWorkStatusFloat = workStatusFloatMountable && workStatusPanelEnabled && !isDesktopExpandedInput;
 
     React.useEffect(() => {
         if (pinned) return;
@@ -1060,9 +1069,9 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     const setWorkStatusPanelVisible = useUIStore((state) => state.setWorkStatusPanelVisible);
     React.useEffect(() => {
         if (pinned) return;
-        setWorkStatusPanelVisible(showWorkStatusPanel);
+        setWorkStatusPanelVisible(showWorkStatusPanel || showWorkStatusFloat);
         return () => setWorkStatusPanelVisible(false);
-    }, [pinned, setWorkStatusPanelVisible, showWorkStatusPanel]);
+    }, [pinned, setWorkStatusPanelVisible, showWorkStatusFloat, showWorkStatusPanel]);
     const messageListRef = React.useRef<MessageListHandle | null>(null);
 
     const currentSession = useSession(currentSessionId, effectiveSessionDirectory);
@@ -1933,6 +1942,18 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         {workStatusPanelMountable ? (
             <WorkStatusPanel
                 visible={showWorkStatusPanel}
+                sessionId={currentSessionId ?? null}
+                directory={workStatusDirectory ?? null}
+                repositoryEnabled={!isManagedChatContext}
+            />
+        ) : null}
+        {/* Positioned against the chat's own box (this row is not a
+            containing block), which the context panel narrows from the right:
+            once open, the panel hides whatever part of the card lies under it. */}
+        {workStatusFloatMountable ? (
+            <WorkStatusPanel
+                floating
+                visible={showWorkStatusFloat}
                 sessionId={currentSessionId ?? null}
                 directory={workStatusDirectory ?? null}
                 repositoryEnabled={!isManagedChatContext}

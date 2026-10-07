@@ -1,11 +1,25 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { Window } from 'happy-dom';
 import { useUIStore } from '@/stores/useUIStore';
 import { I18nProvider } from '@/lib/i18n';
 import { useGuestsStore } from '@/lib/guests/store';
 import { WORK_STATUS_SECTION_IDS } from './sections';
+
+// React detects input-event support when its DOM renderer is first imported.
+// Give that probe a document, then restore the caller's globals immediately.
+const rendererWindow = new Window();
+const rendererGlobals = ['window', 'document'] as const;
+const previousRendererGlobals = rendererGlobals.map((name) => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const);
+Object.defineProperty(globalThis, 'window', { value: rendererWindow, configurable: true, writable: true });
+Object.defineProperty(globalThis, 'document', { value: rendererWindow.document, configurable: true, writable: true });
+const { createRoot } = await import('react-dom/client');
+for (const [name, descriptor] of previousRendererGlobals) {
+  if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+  else Reflect.deleteProperty(globalThis, name);
+}
+rendererWindow.close();
 
 let WorkStatusSectionsDialog: typeof import('./WorkStatusSectionsDialog').WorkStatusSectionsDialog;
 
@@ -139,6 +153,32 @@ describe('section arrangement dialog', () => {
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Escape', key: 'Escape' })));
     expect(order().slice(0, 2)).toEqual(['repository', 'session']);
     expect(closeCount).toBe(0);
+  });
+
+  test('floating reveals the idle-opacity slider, which writes snapped values', async () => {
+    await act(async () => useUIStore.setState({ workStatusFloating: false, workStatusFloatIdleOpacity: 0.6, workStatusOverlayOpen: true }));
+    const floatRow = () => document.querySelector<HTMLElement>('[data-settings-item="chat.work-status.floating"]');
+    const slider = () => document.querySelector<HTMLInputElement>('input[type="range"]');
+    expect(slider()).toBeNull();
+    await act(async () => floatRow()?.click());
+    expect(useUIStore.getState().workStatusFloating).toBe(true);
+    // The narrow-window dropdown would duplicate the floating card.
+    expect(useUIStore.getState().workStatusOverlayOpen).toBe(false);
+    const input = slider();
+    if (!input) throw new Error('Expected the idle-opacity slider');
+    expect(input.value).toBe('60');
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    await act(async () => {
+      setValue?.call(input, '35');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(useUIStore.getState().workStatusFloatIdleOpacity).toBe(0.35);
+    expect(input.parentElement?.textContent).toContain('35%');
+    await act(async () => floatRow()?.click());
+    expect(useUIStore.getState().workStatusFloating).toBe(false);
+    expect(slider()).toBeNull();
+    // Section rows are unaffected by the floating controls.
+    expect(order()).toEqual([...WORK_STATUS_SECTION_IDS]);
   });
 
   test('touch requires a hold and commits the same order as mouse dragging', async () => {
