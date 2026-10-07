@@ -167,7 +167,16 @@ const ContextPanelRailItem: React.FC<RailItemProps> = ({
   );
 };
 
-export const ContextPanelRail: React.FC = () => {
+type ContextPanelRailProps = {
+  /**
+   * `column`: its own full-height strip at the window's right edge.
+   * `underPanel`: stacked under the docked work-status panel, which then takes
+   * the strip's top for itself and reaches the window edge.
+   */
+  placement?: 'column' | 'underPanel';
+};
+
+export const ContextPanelRail: React.FC<ContextPanelRailProps> = ({ placement = 'column' }) => {
   const { t } = useI18n();
   const effectiveDirectory = useEffectiveDirectory();
   const directoryKey = effectiveDirectory ? normalizeContextPanelDirectoryKey(effectiveDirectory) : '';
@@ -335,7 +344,10 @@ export const ContextPanelRail: React.FC = () => {
   return (
     <nav
       aria-label={t('contextRail.aria.rail')}
-      className="flex h-full w-11 flex-shrink-0 flex-col items-center gap-1 bg-background py-2"
+      className={cn(
+        'flex w-11 flex-shrink-0 flex-col items-center gap-1',
+        placement === 'column' ? 'h-full bg-background py-2' : 'self-end pb-2',
+      )}
     >
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={surfaces.map((surface) => surface.id)} strategy={verticalListSortingStrategy}>

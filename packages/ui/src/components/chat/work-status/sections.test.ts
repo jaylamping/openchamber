@@ -19,7 +19,7 @@ describe('section registry', () => {
 
   test('preserves chosen positions and appends missing sections once', () => {
     const order = sanitizeWorkStatusSectionOrder(['pinned', 'repository', 'pinned', 'obsolete', 'session']);
-    expect(order).toEqual(['pinned', 'repository', 'session', 'usage', 'telemetry', 'subagents', 'mcp', 'contextSources']);
+    expect(order).toEqual(['pinned', 'repository', 'session', 'telemetry', 'subagents', 'mcp', 'contextSources']);
     expect(sanitizeWorkStatusSectionOrder(JSON.parse(JSON.stringify(order)))).toEqual(order);
   });
 
@@ -35,14 +35,14 @@ describe('isWorkStatusSectionVisible', () => {
   test('everything is visible by default', () => {
     // Storing the hidden set means a section added later is on for everyone,
     // rather than invisible to whoever had settings saved before it existed.
-    expect(isWorkStatusSectionVisible([], 'usage')).toBe(true);
-    expect(isWorkStatusSectionVisible(undefined, 'usage')).toBe(true);
-    expect(isWorkStatusSectionVisible(null, 'usage')).toBe(true);
+    expect(isWorkStatusSectionVisible([], 'telemetry')).toBe(true);
+    expect(isWorkStatusSectionVisible(undefined, 'telemetry')).toBe(true);
+    expect(isWorkStatusSectionVisible(null, 'telemetry')).toBe(true);
   });
 
   test('hides exactly the listed section', () => {
-    expect(isWorkStatusSectionVisible(['usage'], 'usage')).toBe(false);
-    expect(isWorkStatusSectionVisible(['usage'], 'mcp')).toBe(true);
+    expect(isWorkStatusSectionVisible(['telemetry'], 'telemetry')).toBe(false);
+    expect(isWorkStatusSectionVisible(['telemetry'], 'mcp')).toBe(true);
   });
 });
 
@@ -57,7 +57,7 @@ describe('areAllWorkStatusSectionsHidden', () => {
   });
 
   test('returns false when only some sections are hidden', () => {
-    expect(areAllWorkStatusSectionsHidden(['usage', 'mcp'])).toBe(false);
+    expect(areAllWorkStatusSectionsHidden(['telemetry', 'mcp'])).toBe(false);
   });
 
   test('returns true when every known section is hidden', () => {
@@ -117,12 +117,17 @@ describe('getWorkStatusPanelPresentation', () => {
 
 describe('sanitizeWorkStatusHiddenSections', () => {
   test('keeps known ids and drops everything else', () => {
-    expect(sanitizeWorkStatusHiddenSections(['usage', 'nope', 42, null, 'mcp']))
-      .toEqual(['usage', 'mcp']);
+    expect(sanitizeWorkStatusHiddenSections(['telemetry', 'nope', 42, null, 'mcp']))
+      .toEqual(['telemetry', 'mcp']);
+  });
+
+  test('forgets the Usage section, which moved to the header', () => {
+    expect(sanitizeWorkStatusHiddenSections(['usage', 'mcp'])).toEqual(['mcp']);
+    expect(sanitizeWorkStatusSectionOrder(['usage', 'pinned'])).toEqual(['pinned', ...WORK_STATUS_SECTION_IDS.filter((id) => id !== 'pinned')]);
   });
 
   test('deduplicates', () => {
-    expect(sanitizeWorkStatusHiddenSections(['usage', 'usage'])).toEqual(['usage']);
+    expect(sanitizeWorkStatusHiddenSections(['telemetry', 'telemetry'])).toEqual(['telemetry']);
   });
 
   test('treats a non-array payload as default hidden preference', () => {

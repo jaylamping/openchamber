@@ -36,7 +36,16 @@ the inline card keeps its lighter, non-blurred fill instead.
 
 - the existing chat column (`data-composer-bound`, `flex-1 min-w-0`), holding
   the viewport, the composer and the timeline dialog;
-- `WorkStatusPanel`, a fixed-width `shrink-0` sibling.
+- a `shrink-0` column holding `WorkStatusPanel` and, while the panel shows,
+  the context rail (`ContextPanelRail placement="underPanel"`).
+
+The rail normally has a full-height strip of its own at the window edge, which
+beside a docked panel read as two competing columns. While the docked panel
+shows, `MainLayout` drops that strip and the rail stacks under the card
+instead, so the card reaches the window edge. The card gives up height before
+the rail is pushed off screen; its own scroller takes the rest. A floating card
+leaves the rail alone, and a surface page (which hides the chat) keeps the rail
+in its strip.
 
 Nothing inside `ChatViewport` changed. The virtualizer sees the column shrink
 exactly as it already does when the context panel opens.
@@ -103,7 +112,6 @@ which requests only providers enabled for this panel.
 | PR + checks | `useFreshestSourceControlVisualSummaryForBranch` | **read-only**; follows the freshest bound-identity entry for the branch |
 | Subagents | child sessions from `useAllLiveSessions` (`parentID`) + `useAllSessionStatuses`; per-row cost from `computeRollup`'s `perChildCost` (each child's own subtree total, so nested subagent-of-subagent cost rolls up under its immediate parent row) | |
 | Subagent blockers | directory `permission` / `question` maps | one subscription covers every child |
-| Usage | `components/usage/usageGroups.ts` over `useQuotaStore` | grouping shared with the mobile popover; presentation is not |
 | Linked threads | `lib/linkedIssues.ts` over session metadata | written by the flows that attach an issue or PR |
 | Turn stats | `telemetry.ts` over `useSessionMessageRecords` | computed only while expanded and authoritatively idle; either rate above 5,000 tok/s is reported as unknown (see the two-rate description below) |
 | Goal | `useSessionGoal` | respects the Settings toggle |
@@ -135,7 +143,7 @@ tooltip. Model-only session updates invalidate the live-session comparison.
 
 ### Turn stats
 
-The section follows Usage by default and reuses the panel's existing rows. Only its header
+The section follows Project by default and reuses the panel's existing rows. Only its header
 has an icon; metric rows use labels and values without leading icons. It
 reads already-loaded records without fetching history. The newest turn needs a
 preceding user message and completed assistant steps. A truncated or unfinished
@@ -273,10 +281,8 @@ the row reflects the reset tree rather than a mid-creation snapshot.
 The default order is by durability:
 
 1. **Session** (goal, context, cost), **Project** (attention, branch,
-   changes, PR, checks), **Usage**, and **Turn stats** (session telemetry:
-   throughput, duration, TTFT, cache hit rate) — true for as long as the session
-   is open. Usage sits here rather than lower down because a spent quota stops the
-   work outright;
+   changes, PR, checks), and **Turn stats** (session telemetry: throughput,
+   duration, TTFT, cache hit rate) — true for as long as the session is open;
 2. **Subagents** — what is happening right now;
 3. **MCP**, **Pinned messages**, **Context sources** — supporting material.
 
@@ -442,25 +448,15 @@ dialog) and returns to full opacity on the existing panel transition.
 Position, floating and opacity are device-local (`LOCAL_DEVICE_KEYS` in the
 settings registry): a spot chosen on one screen means nothing on another.
 
-## Collapsed Usage headline
+## Usage moved to the header
 
-Collapsed, the Usage section shows one quota rather than a mode word: the
-**shortest window reported by the provider the composer is pointed at**. A
-5-hour bucket answers "will the next turn land"; a monthly one does not.
-
-Selection rules live in `usageHeadline.ts` and are pinned by
-`usageHeadline.test.ts`:
-
-- provider ids are matched directly, with a small alias table for the ones that
-  diverge from OpenCode's (`openai`/`chatgpt` → `codex`, `anthropic` → `claude`,
-  `gemini` → `google`);
-- model-scoped rows are skipped while any provider-level row exists — a
-  per-model quota is not the provider's;
-- rows without a window duration (credit balances, tool counters) are a last
-  resort, never preferred over a real window;
-- **no match means no headline.** The section falls back to the display-mode
-  label, because showing an unmatched provider's quota would read as the active
-  one.
+Provider rate limits used to be a section here, and the tallest one: a block
+per provider with a row per limit. They now live in the desktop header
+(`components/usage/HeaderUsage.tsx`): a strip with each provider's tightest
+limit, and a panel on click with a ring per provider and every limit with its
+bar and reset countdown. The providers are the ones chosen under Settings →
+Usage → "Show in header". A saved `usage` id in the section order or hidden
+list is simply dropped by `sanitizeWorkStatusSectionOrder`.
 
 ## Actions
 
@@ -543,6 +539,7 @@ the matching header dropdown:
 - **MCP** — `McpDropdown` was the only mount-time caller of `refresh()`.
 - **Usage** — `useQuotaAutoRefresh` schedules the shared fixed three-minute
   refresh; the *first* fetch was performed by the dropdown's open handler.
+  (Usage has since moved to the header, which now asks for that first load.)
 - **Skills** — `loadSkills()` ran only when the composer's slash autocomplete
   opened, so the context-sources count was whatever happened to be cached. The
   section loads them itself, keyed on the directory, since skills are
@@ -579,8 +576,7 @@ skills effects take `isConnected` as a dependency — not a gate — because
 
 The panel now performs these itself, silently and through the
 background-network gate, so it cannot compete with chat bootstrap traffic for
-sockets. Usage additionally provides an explicit refresh action in its section
-header. A panel that reports a subsystem's state cannot depend on an unrelated
+sockets. A panel that reports a subsystem's state cannot depend on an unrelated
 component having been mounted or opened.
 
 The repository section follows the same ownership rule. It subscribes directly

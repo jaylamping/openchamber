@@ -188,9 +188,9 @@ export const UsagePage: React.FC = () => {
         <SettingsCheckboxRow
           checked={showInDropdown}
           onChange={handleDropdownToggle}
-          label={t('settings.usage.page.options.showInWorkStatus')}
-          ariaLabel={t('settings.usage.page.options.showInWorkStatusAria')}
-          info={t('settings.usage.page.options.showInWorkStatusTooltip')}
+          label={t('settings.usage.page.options.showInHeader')}
+          ariaLabel={t('settings.usage.page.options.showInHeaderAria')}
+          info={t('settings.usage.page.options.showInHeaderTooltip')}
         />
       </SettingsSection>
 

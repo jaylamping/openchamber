@@ -825,8 +825,8 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   {
     id: 'usage.work-status-panel',
     page: 'usage',
-    titleKey: 'settings.usage.page.options.showInWorkStatus',
-    descriptionKey: 'settings.usage.page.options.showInWorkStatusTooltip',
+    titleKey: 'settings.usage.page.options.showInHeader',
+    descriptionKey: 'settings.usage.page.options.showInHeaderTooltip',
     keywords: ['quota', 'work', 'status', 'panel'],
   },
   {

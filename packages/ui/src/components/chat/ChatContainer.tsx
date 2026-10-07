@@ -96,6 +96,8 @@ import { isVSCodeRuntime } from '@/lib/desktop';
 import { eventMatchesShortcut, getEffectiveShortcutCombo } from '@/lib/shortcuts';
 import { ChatSearchBar } from './search/ChatSearchBar';
 import { WorkStatusPanel } from './work-status/WorkStatusPanel';
+import { ContextPanelRail } from '@/components/layout/ContextPanelRail';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useWorkStatusVisibility } from './work-status/useWorkStatusVisibility';
 import { normalizeUserDisplayParts } from './message/normalizeUserDisplayParts';
 import { resolveChatPromptReadOnly } from './chatPromptReadOnly';
@@ -1940,12 +1942,20 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             collapse; `visible` drives that. Unmounting on the spot is what made
             the chat jump wide before easing narrow again. */}
         {workStatusPanelMountable ? (
-            <WorkStatusPanel
-                visible={showWorkStatusPanel}
-                sessionId={currentSessionId ?? null}
-                directory={workStatusDirectory ?? null}
-                repositoryEnabled={!isManagedChatContext}
-            />
+            // The docked panel takes the top of the window's right edge and
+            // the context rail stacks under it, rather than standing beside
+            // it as a second column (MainLayout drops the rail's own strip).
+            <div className="flex min-h-0 shrink-0 flex-col">
+                <WorkStatusPanel
+                    visible={showWorkStatusPanel}
+                    sessionId={currentSessionId ?? null}
+                    directory={workStatusDirectory ?? null}
+                    repositoryEnabled={!isManagedChatContext}
+                />
+                {showWorkStatusPanel ? (
+                    <ErrorBoundary><ContextPanelRail placement="underPanel" /></ErrorBoundary>
+                ) : null}
+            </div>
         ) : null}
         {/* Positioned against the chat's own box (this row is not a
             containing block), which the context panel narrows from the right:

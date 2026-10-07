@@ -79,6 +79,12 @@ export const MainLayout: React.FC = () => {
     // fully hidden (not just covered) so none of its floating chrome bleeds
     // through, and selecting a session or draft anywhere closes the surface.
     const isSurfacePageOpen = isScheduledTasksPageOpen || isArchivePageOpen || isUsageStatsPageOpen || Boolean(worktreesPageProjectId) || isSpacesPageOpen || isRunOverviewOpen || Boolean(guestPage);
+    // `workStatusPanelVisible` also covers the floating card, which leaves the
+    // rail alone. A surface page hides the chat, and the rail with it, so the
+    // rail keeps its own strip then.
+    const workStatusPanelVisible = useUIStore((state) => state.workStatusPanelVisible);
+    const workStatusFloating = useUIStore((state) => state.workStatusFloating);
+    const railUnderWorkStatus = workStatusPanelVisible && !workStatusFloating && !isSurfacePageOpen;
 
     React.useEffect(() => {
         const closeSurfacePages = () => useUIStore.getState().closeMainSurfaces();
@@ -167,9 +173,14 @@ export const MainLayout: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="border-t border-border" data-page-scroll-lock="true">
-                                <ErrorBoundary><ContextPanelRail /></ErrorBoundary>
-                            </div>
+                            {/* While the docked work-status panel shows, the rail stacks
+                                under it inside the chat instead (see ChatContainer), and
+                                the panel takes this strip's place at the window edge. */}
+                            {railUnderWorkStatus ? null : (
+                                <div className="border-t border-border" data-page-scroll-lock="true">
+                                    <ErrorBoundary><ContextPanelRail /></ErrorBoundary>
+                                </div>
+                            )}
                             <ErrorBoundary><GuestHosts /></ErrorBoundary>
                         </div>
                     </div>

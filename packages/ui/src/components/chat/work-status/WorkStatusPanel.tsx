@@ -7,7 +7,6 @@ import { useUIStore } from '@/stores/useUIStore';
 import { WORK_STATUS_PANEL_WIDTH } from './useWorkStatusVisibility';
 import { WorkStatusGoalRow } from './WorkStatusGoalRow';
 import { WorkStatusPrimaryGroup } from './WorkStatusPrimaryGroup';
-import { WorkStatusUsageSection } from './WorkStatusUsageSection';
 import { WorkStatusTelemetrySection } from './WorkStatusTelemetrySection';
 import { WorkStatusSubagentsSection } from './WorkStatusSubagentsSection';
 import { WorkStatusMcpSection } from './WorkStatusMcpSection';
@@ -195,7 +194,6 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
   // Keep these elements owned by the panel so primary readout updates do not
   // rerender unrelated sections through the composition callback.
   const secondarySections = {
-    usage: <WorkStatusUsageSection />,
     telemetry: <WorkStatusTelemetrySection sessionId={sessionId} directory={directory} />,
     subagents: <WorkStatusSubagentsSection sessionId={sessionId} directory={directory} />,
     mcp: <WorkStatusMcpSection directory={directory} />,
@@ -236,11 +234,15 @@ export const WorkStatusPanel: React.FC<Props> = ({ sessionId, directory, visible
         // overflowing the chat.
         // A left margin as well as a right one: flush against the transcript
         // the card's own shadow had no room and was clipped down that edge.
-        'relative flex shrink-0 flex-col self-start overflow-hidden',
+        // Docked, it sits in a column above the context rail and gives up
+        // height to it before the rail is pushed off screen; its own scroller
+        // takes the rest.
+        'relative flex min-h-0 flex-col self-start overflow-hidden',
         floating
           // The frame around it owns position and height.
           ? 'm-0 max-h-full min-h-0'
-          : ['my-4 max-h-[calc(100%-2rem)]', interactive ? 'ml-2 mr-4' : 'ml-0 mr-0'],
+          // The context rail stacks right under it, so only a small gap below.
+          : ['mb-1 mt-4 max-h-[calc(100%-1.25rem)]', interactive ? 'ml-2 mr-4' : 'ml-0 mr-0'],
         // Out of the flow entirely, anchored to the chat column's top-right so
         // it reads as a dropdown from the header button. As a flex child it
         // took part in the layout and pushed the transcript, which is the one

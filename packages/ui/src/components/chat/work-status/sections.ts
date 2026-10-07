@@ -15,7 +15,6 @@ import type { I18nKey } from '@/lib/i18n/messages/en';
 export const WORK_STATUS_SECTION_IDS = [
   'session',
   'repository',
-  'usage',
   'telemetry',
   'subagents',
   'mcp',
@@ -28,7 +27,6 @@ export type WorkStatusSectionId = (typeof WORK_STATUS_SECTION_IDS)[number];
 export const WORK_STATUS_SECTION_LABEL_KEYS = {
   session: 'chat.workStatus.section.session',
   repository: 'chat.workStatus.section.project',
-  usage: 'chat.workStatus.section.usage',
   telemetry: 'chat.workStatus.section.telemetry',
   subagents: 'chat.workStatus.section.subagents',
   mcp: 'chat.workStatus.section.mcp',

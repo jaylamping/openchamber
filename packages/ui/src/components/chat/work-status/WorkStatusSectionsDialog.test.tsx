@@ -98,8 +98,8 @@ describe('section arrangement dialog', () => {
     await act(async () => document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 12, clientY: 90 })));
     expect(useUIStore.getState().workStatusSectionOrder).toEqual([...WORK_STATUS_SECTION_IDS]);
     await act(async () => document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })));
-    expect(order().slice(0, 3)).toEqual(['repository', 'usage', 'session']);
-    expect(useUIStore.getState().workStatusSectionOrder.slice(0, 3)).toEqual(['repository', 'usage', 'session']);
+    expect(order().slice(0, 3)).toEqual(['repository', 'telemetry', 'session']);
+    expect(useUIStore.getState().workStatusSectionOrder.slice(0, 3)).toEqual(['repository', 'telemetry', 'session']);
     expect(useUIStore.getState().workStatusHiddenSections).toEqual([]);
     expect(closeCount).toBe(0);
   });
@@ -197,6 +197,6 @@ describe('section arrangement dialog', () => {
     });
     await act(async () => dispatch('touchmove', 90));
     await act(async () => dispatch('touchend', 90));
-    expect(order().slice(0, 3)).toEqual(['repository', 'usage', 'session']);
+    expect(order().slice(0, 3)).toEqual(['repository', 'telemetry', 'session']);
   });
 });
